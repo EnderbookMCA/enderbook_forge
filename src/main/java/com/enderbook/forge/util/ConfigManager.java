@@ -1,5 +1,7 @@
 package com.enderbook.forge.util;
 
+import java.io.File;
+
 import com.enderbook.forge.Enderbook;
 
 import tudbut.parsing.JSON;
@@ -9,17 +11,20 @@ import tudbut.tools.ConfigSaverTCN2;
 
 public class ConfigManager {
 
-    public TCN getTCN() {
+    public static final File FILE     = new File("config/enderbook_forge.json");
+    public static final File TMP_FILE = new File("config/enderbook_forge.json.tmp");
+
+    public static TCN getTCN() {
         TCN config = new TCN();
         config.set("mod", ConfigSaverTCN2.write(Enderbook.class, false, true));
         return config;
     }
 
-    public String getString() {
+    public static String getString() {
         return JSON.write(getTCN());
     }
 
-    public void readTCN(TCN config) {
+    public static void readTCN(TCN config) {
         try {
             ConfigSaverTCN2.read(config.getSub("mod"), Enderbook.INSTANCE);
         } catch (Exception e) {
@@ -27,7 +32,7 @@ public class ConfigManager {
         }
     }
 
-    public void readString(String s) {
+    public static void readString(String s) {
         try {
             readTCN(JSON.read(s));
         } catch (JSONFormatException e) {
