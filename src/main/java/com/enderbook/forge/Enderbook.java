@@ -1,4 +1,4 @@
-package com.ianrandmckenzie.enderbook;
+package com.enderbook.forge;
 
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
