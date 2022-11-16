@@ -9,6 +9,7 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 @Mod(Enderbook.MODID)
 public class Enderbook {
     public static final String MODID = "enderbook_forge";
+    public static Enderbook INSTANCE; {INSTANCE = this;}
 
     public Enderbook() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
