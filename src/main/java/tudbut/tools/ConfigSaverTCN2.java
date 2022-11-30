@@ -38,6 +38,10 @@ public class ConfigSaverTCN2 {
     ));
 
     public static Object write(Object object, boolean writeAll, boolean writeStatic) {
+        return write(object, writeAll, writeStatic, true);
+    }
+
+    public static Object write(Object object, boolean writeAll, boolean writeStatic, boolean allowPrimitives) {
         if(object == null) {
             TCN tcn = new TCN();
             tcn.set("$", "null");
@@ -48,7 +52,7 @@ public class ConfigSaverTCN2 {
             objectClass = (Class<?>) object;
             object = null;
         }
-        if(tcnPrimitives.contains(objectClass)) {
+        if(tcnPrimitives.contains(objectClass) && allowPrimitives) {
             return object; // just write the object without any wrapping lol
         }
 
@@ -60,7 +64,7 @@ public class ConfigSaverTCN2 {
             tcn.set("length", len);
             TCNArray tcnArray = new TCNArray();
             for(int i = 0; i < len; i++) {
-                tcnArray.add(write(Array.get(object, i), true, writeStatic));
+                tcnArray.add(write(Array.get(object, i), true, false, objectClass.getComponentType() != Object.class));
             }
             tcn.set("items", tcnArray);
         }
@@ -68,6 +72,7 @@ public class ConfigSaverTCN2 {
             tcn.set("$", objectClass.getName());
             if(objectClass.isEnum()) {
                 tcn.set("*", Arrays.asList(objectClass.getEnumConstants()).indexOf(object)); // Return the equivalent of .ordinal()
+                return tcn;
             }
             ArrayList<Field> fields = new ArrayList<>();
 
@@ -85,6 +90,8 @@ public class ConfigSaverTCN2 {
                     continue;
                 if(!writeStatic && isStatic)
                     continue;
+                if(isStatic && (field.getModifiers() & Modifier.FINAL) != 0)
+                    continue;
                 if(field.getDeclaredAnnotation(Transient.class) != null)
                     continue;
 
@@ -97,7 +104,7 @@ public class ConfigSaverTCN2 {
                     System.err.println("forceAccessible silently failed. Exiting.");
                     throw new Error("ConfigSaverTCN2: forceAccessible failed");
                 }
-                tcn.set(field.getName(), write(o, true, writeStatic));
+                tcn.set(field.getName(), write(o, true, false, field.getType() != Object.class));
             }
         }
 
@@ -118,7 +125,7 @@ public class ConfigSaverTCN2 {
                     return (short) Integer.parseInt((String) object);
                 case "char":
                 case "Character":
-                    return (char) Integer.parseInt((String) object);
+                    return ((String) object).charAt(0);
                 case "int":
                 case "Integer":
                     return Integer.parseInt((String) object);
@@ -150,7 +157,36 @@ public class ConfigSaverTCN2 {
         if(tcn.getString("$").equals("null")) 
             return null;
         if(tcn.getString("$").equals("[]")) {
-            objectClass = Class.forName(tcn.getString("*"));
+            try {
+                objectClass = Class.forName(tcn.getString("*"));
+            } catch (ClassNotFoundException e) {
+                switch(tcn.getString("*")) {
+                    case "boolean":
+                        objectClass = boolean.class;
+                        break; 
+                    case "byte":
+                        objectClass = byte.class;
+                        break; 
+                    case "short":
+                        objectClass = short.class;
+                        break; 
+                    case "char":
+                        objectClass = char.class;
+                        break; 
+                    case "int":
+                        objectClass = int.class;
+                        break; 
+                    case "float":
+                        objectClass = float.class;
+                        break; 
+                    case "long":
+                        objectClass = long.class;
+                        break; 
+                    case "double":
+                        objectClass = double.class;
+                        break; 
+                }
+            }
             TCNArray tcnArray = tcn.getArray("items");
             Object jArray = Array.newInstance(objectClass, tcn.getInteger("length"));
             for(int i = 0; i < tcnArray.size(); i++) {
@@ -163,6 +199,7 @@ public class ConfigSaverTCN2 {
             Object instance = toReadTo;
             if(objectClass.isEnum()) {
                 instance = objectClass.getEnumConstants()[tcn.getInteger("*")];
+                return instance;
             }
             if(instance == null) {
                 try {
@@ -184,6 +221,8 @@ public class ConfigSaverTCN2 {
             for(Field field : fields) {
                 boolean isStatic = (field.getModifiers() & Modifier.STATIC) != 0;
                 if(field.getDeclaredAnnotation(Transient.class) != null)
+                    continue;
+                if(isStatic && (field.getModifiers() & Modifier.FINAL) != 0)
                     continue;
                 forceAccessible(field); // lovely java 18 bypass
                 eraseFinality(field); // other lovely java 18 bypass
@@ -243,16 +282,9 @@ public class ConfigSaverTCN2 {
             System.exit(1);
         }
     }
-    private static class FakeField extends FakeAccessibleObject {
-        private Class<?> clazz;
-        private int slot;
-        private String name;
-        private Class<?> type;
-        private int modifiers;
-    }
     private static void eraseFinality(Field thing) {
         try {
-            long offset = theSafe.objectFieldOffset(FakeField.class.getDeclaredField("modifiers"));
+            long offset = theSafe.objectFieldOffset(Field.class.getDeclaredField("modifiers"));
             theSafe.putInt(thing, offset, theSafe.getInt(thing, offset) & ~Modifier.FINAL); // EZ
         } catch(Exception e) { // we are doomed
             e.printStackTrace();
