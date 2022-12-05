@@ -5,17 +5,26 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 import com.enderbook.forge.util.ConfigManager;
+import com.enderbook.forge.util.LoginManager;
+
 import de.tudbut.io.StreamReader;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import tudbut.obj.Save;
 
 @Mod(Enderbook.MODID)
 public class Enderbook {
     public static final String MODID = "enderbook_forge";
-    public static Enderbook INSTANCE; {INSTANCE = this;}
+    public static Enderbook INSTANCE;
+    {
+        INSTANCE = this;
+    }
+
+    @Save
+    public LoginManager loginManager = null;
 
     public Enderbook() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -24,7 +33,7 @@ public class Enderbook {
     }
 
     private void init(FMLCommonSetupEvent event) {
-        try(FileInputStream stream = new FileInputStream(ConfigManager.FILE)) {
+        try (FileInputStream stream = new FileInputStream(ConfigManager.FILE)) {
             StreamReader reader = new StreamReader(stream);
             ConfigManager.readString(reader.readAllAsString());
         } catch (IOException e) {
@@ -32,7 +41,7 @@ public class Enderbook {
         }
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
-                try(FileOutputStream stream = new FileOutputStream(ConfigManager.TMP_FILE)) {
+                try (FileOutputStream stream = new FileOutputStream(ConfigManager.TMP_FILE)) {
                     stream.write(ConfigManager.getString().getBytes());
                 }
                 ConfigManager.TMP_FILE.renameTo(ConfigManager.FILE);
